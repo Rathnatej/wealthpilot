@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -100,6 +100,33 @@ class CreditSnapshot(Base):
     total_limit: Mapped[float] = mapped_column(Float, default=0.0)
     inputs: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class VoiceProfile(Base):
+    """Per-user voice assistant settings and consent (one row per user)."""
+    __tablename__ = "voice_profiles"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    consented_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    save_history: Mapped[bool] = mapped_column(Boolean, default=False)
+    voice: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+
+
+class VoiceSession(Base):
+    """One voice conversation. Transcript/summary are Fernet-encrypted; no audio is stored.
+    Analytics fields (language, duration, end_reason, error_code) contain no content."""
+    __tablename__ = "voice_sessions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    voice: Mapped[str] = mapped_column(String(40), default="")
+    language: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    end_reason: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    reconnects: Mapped[int] = mapped_column(Integer, default=0)
+    transcript_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    summary_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class AuditLog(Base):

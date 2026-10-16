@@ -122,7 +122,17 @@ function DashboardView() {
         {error && <p role="alert" className="mt-2 text-sm text-down">{error}</p>}
       </section>
 
-      <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mt-10">
+        <Link href="/voice" className="card-dark flex flex-wrap items-center justify-between gap-4 !p-6 sm:!p-8">
+          <div>
+            <div className="text-xl font-semibold">Talk to your assistant</div>
+            <div className="mt-1 text-sm opacity-80">A calm voice conversation about your money, in English, Hindi, Telugu and more.</div>
+          </div>
+          <span className="btn-secondary btn-sm">Start talking</span>
+        </Link>
+      </section>
+
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["/planners", "Planners", "Retirement, step-up SIP, loan vs invest"],
           ["/chat", "Ask the copilot", "What-if questions in plain words"],

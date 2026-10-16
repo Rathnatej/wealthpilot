@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 load_dotenv()
 
-import ai_service, auth, credit, engine, features, user_routes  # noqa: E402
+import ai_service, auth, credit, engine, features, user_routes, voice  # noqa: E402
 from database import get_session, init_db  # noqa: E402
 from models import AuditLog, User  # noqa: E402
 from parsers.cas_parser import parse_cas  # noqa: E402
@@ -35,6 +35,7 @@ app.include_router(auth.router)
 app.include_router(user_routes.router)
 app.include_router(features.router)
 app.include_router(credit.router)
+app.include_router(voice.router)
 
 
 @app.get("/health")

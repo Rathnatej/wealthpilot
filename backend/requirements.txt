@@ -15,3 +15,4 @@ email-validator
 google-auth
 requests
 numpy
+cryptography

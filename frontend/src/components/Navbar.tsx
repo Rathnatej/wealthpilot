@@ -11,6 +11,7 @@ const links = [
   { href: "/twin", label: "My Twin" },
   { href: "/goals", label: "Goals" },
   { href: "/planners", label: "Planners" },
+  { href: "/voice", label: "Talk" },
   { href: "/chat", label: "Copilot" },
   { href: "/credit", label: "Credit" },
   { href: "/insights", label: "Insights" },

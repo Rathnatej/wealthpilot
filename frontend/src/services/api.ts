@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
 });
 
@@ -37,6 +37,7 @@ export function errMsg(e: unknown, fallback = "Something went wrong"): string {
     if (!e.response) return "Cannot reach the API. Is the backend running?";
     const d = e.response.data?.detail;
     if (typeof d === "string") return d;
+    if (d && typeof d === "object" && typeof d.message === "string") return d.message;
     if (Array.isArray(d) && d.length) return d.map((x: { msg: string }) => x.msg).join("; ");
   }
   return fallback;
