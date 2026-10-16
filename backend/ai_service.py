@@ -1,19 +1,24 @@
 import os
+
 from google import genai
 from google.genai import types
 
-from schemas import IntentResponse
+from feature_schemas import LLMIntent
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-GUARDRAILS = """You are WealthPilot's educational assistant. Compliance rules (SEBI Level 1-2 only):
-- Provide only educational concepts and scenario analysis.
-- NEVER generate financial figures, projections or returns yourself; all numbers come from the deterministic engine.
-- NEVER recommend specific stocks, funds or tickers, and never give personalised buy/sell/execution advice.
-- If asked for such advice, set refused=true and explain you can only help with education and what-if scenarios.
-For what-if questions, extract ONLY the user-stated parameters into `scenario`
-(amounts in INR: 1 lakh = 100000; loan EMI in new_loan_emi and tenure in new_loan_months; SIP change in sip_delta).
-Do not invent values the user did not state."""
+INTENT_SYSTEM = """You extract what-if parameters for WealthPilot (SEBI Level 1-2: education and scenario analysis only).
+- Fill `params` ONLY with values the user explicitly stated. Amounts are in INR (1 lakh = 100000, 1 crore = 10000000).
+- loan_amount = loan principal; loan_months = tenure in months (convert years); loan_rate_pct = yearly interest if stated;
+  loan_emi = only if the user gave an EMI amount; sip_change = change in monthly SIP (negative to reduce); lump_sum = one-time amount invested.
+- NEVER compute an EMI, return or projection yourself, and never invent values the user did not state.
+- If the user asks which stock/fund to buy or sell, or for personalised advice, set refused=true and explain that you
+  only provide education and what-if scenarios.
+- If there is no scenario in the message, leave params null and put a short hint in `message`."""
+
+
+def configured() -> bool:
+    return bool(os.getenv("GEMINI_API_KEY"))
 
 
 def _client():
@@ -23,25 +28,34 @@ def _client():
     return genai.Client(api_key=key)
 
 
-def parse_intent(query: str) -> IntentResponse:
+def parse_intent_llm(query: str) -> LLMIntent:
     resp = _client().models.generate_content(
         model=MODEL,
         contents=query,
         config=types.GenerateContentConfig(
-            system_instruction=GUARDRAILS,
+            system_instruction=INTENT_SYSTEM,
             response_mime_type="application/json",
-            response_schema=IntentResponse,
+            response_schema=LLMIntent,
             temperature=0,
         ),
     )
-    return IntentResponse.model_validate_json(resp.text)
+    return LLMIntent.model_validate_json(resp.text)
+
+
+def generate(system: str, prompt: str, temperature: float = 0.2) -> str:
+    resp = _client().models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(system_instruction=system, temperature=temperature),
+    )
+    return resp.text or ""
 
 
 def explain(context: str) -> str:
-    resp = _client().models.generate_content(
-        model=MODEL,
-        contents="Explain these simulation results in plain language, educationally. "
-                 "Only reference numbers given here; add no new numbers or advice.\n" + context,
-        config=types.GenerateContentConfig(system_instruction=GUARDRAILS, temperature=0.3),
+    """Legacy free-text explainer (kept for /ai/explain)."""
+    return generate(
+        "You are WealthPilot's educational assistant (SEBI Level 1-2). Never invent numbers, never give advice.",
+        "Explain these simulation results in plain language, educationally. Only reference numbers given here; "
+        "add no new numbers or advice.\n" + context,
+        0.3,
     )
-    return resp.text

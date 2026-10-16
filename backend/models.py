@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -15,6 +15,7 @@ class User(Base):
     risk_tolerance: Mapped[str] = mapped_column(String(20), default="moderate")
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     google_sub: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email_alerts: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)
     twins: Mapped[list["FinancialTwin"]] = relationship(back_populates="user")
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")
 
@@ -74,6 +75,31 @@ class Goal(Base):
     expected_return: Mapped[float] = mapped_column(Float, default=0.10)
     linked_allocation: Mapped[dict] = mapped_column(JSON, default=dict)
     user: Mapped[User] = relationship(back_populates="goals")
+
+
+class SharedScenario(Base):
+    """A frozen, publicly viewable scenario result. Holds no personal data beyond what the owner chose to share."""
+    __tablename__ = "shared_scenarios"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(80))
+    payload: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class CreditSnapshot(Base):
+    """One saved run of the credit coach. `inputs` holds what the user entered (cards, loans, due days)."""
+    __tablename__ = "credit_snapshots"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    utilization_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    dti_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_balance: Mapped[float] = mapped_column(Float, default=0.0)
+    total_limit: Mapped[float] = mapped_column(Float, default=0.0)
+    inputs: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class AuditLog(Base):

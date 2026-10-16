@@ -86,6 +86,19 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: AsyncSession = Depends(get_session),
+) -> User | None:
+    """Like get_current_user, but anonymous callers get None instead of a 401."""
+    if creds is None:
+        return None
+    try:
+        return await get_current_user(creds, db)
+    except HTTPException:
+        return None
+
+
 @router.post("/auth/signup", response_model=TokenResponse, status_code=201)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_session)):
     email = body.email.lower()

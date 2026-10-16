@@ -37,7 +37,10 @@ def parse_text(text: str) -> list[dict]:
     return holdings
 
 
-def parse_cas(pdf_bytes: bytes, password: str | None = None) -> list[dict]:
+def extract_text(pdf_bytes: bytes, password: str | None = None) -> str:
     with pdfplumber.open(io.BytesIO(pdf_bytes), password=password) as pdf:
-        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    return parse_text(text)
+        return "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+
+def parse_cas(pdf_bytes: bytes, password: str | None = None) -> list[dict]:
+    return parse_text(extract_text(pdf_bytes, password))

@@ -14,3 +14,4 @@ bcrypt
 email-validator
 google-auth
 requests
+numpy

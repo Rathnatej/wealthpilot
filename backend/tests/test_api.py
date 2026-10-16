@@ -25,6 +25,6 @@ def test_cors_allows_configured_origin_only(client):
 
 
 def test_ai_requires_login(client):
-    assert client.post("/ai/intent", json={"query": "hi"}).status_code == 401
+    assert client.post("/ai/copilot", json={"query": "hello there"}).status_code == 401
     assert client.post("/ai/explain", json={"query": "hi"}).status_code == 401
     assert client.post("/parse/bank", data={"text": "x"}).status_code == 401

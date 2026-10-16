@@ -1,0 +1,34 @@
+name: Scheduled emails
+
+# Runs daily and asks the API to send opted-in users their alert digest and
+# card-payment-due reminders. Needs two repository secrets:
+#   API_URL      e.g. https://wealthpilot-api-nym6.onrender.com
+#   CRON_SECRET  same value as the CRON_SECRET env var on the API
+# If either is missing, the job does nothing.
+on:
+  schedule:
+    - cron: "30 3 * * *"   # 09:00 IST
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger digest and reminders
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "API_URL or CRON_SECRET not set; skipping."
+            exit 0
+          fi
+          for path in /alerts/send-digest /credit/reminders/send; do
+            echo "POST $path"
+            # Render free instances sleep; allow time to wake up.
+            code=$(curl -sS -m 120 --retry 2 -o /tmp/out.txt -w "%{http_code}" \
+              -X POST -H "X-Cron-Secret: $CRON_SECRET" "$API_URL$path" || echo "000")
+            echo "HTTP $code"; cat /tmp/out.txt; echo
+            # 503 means the feature (SMTP/secret) isn't configured on the server: not an error here.
+            if [ "$code" != "200" ] && [ "$code" != "503" ]; then exit 1; fi
+          done

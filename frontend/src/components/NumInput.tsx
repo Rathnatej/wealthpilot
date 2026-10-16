@@ -10,7 +10,7 @@ export function NumInput({
       type="number" inputMode="decimal" min={min} step={step} placeholder={placeholder}
       value={Number.isFinite(value) && value !== 0 ? value : ""}
       onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
-      className={`w-full rounded-lg bg-slate-800 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 ${className}`}
+      className={`input num ${className}`}
     />
   );
 }

@@ -144,10 +144,84 @@ export const listGoals = () => api.get<Goal[]>("/goals").then((r) => r.data);
 export const createGoal = (g: GoalInput) => api.post<Goal>("/goals", g).then((r) => r.data);
 export const deleteGoal = (id: number) => api.delete(`/goals/${id}`);
 
-export const parseIntent = (query: string) =>
-  api
-    .post<{ refused: boolean; message: string; scenario: Scenario | null }>("/ai/intent", { query })
-    .then((r) => r.data);
+export interface CopilotResult {
+  refused: boolean;
+  message: string;
+  scenario: Scenario | null;
+  assumptions: string[];
+  simulation: SimResponse | null;
+  explanation: string;
+  source: "ai" | "template";
+  parsed_by: "ai" | "rules";
+}
 
-export const explain = (query: string) =>
-  api.post<{ explanation: string }>("/ai/explain", { query }).then((r) => r.data.explanation);
+/** Natural-language what-if. The engine computes every number; AI only words it. */
+export const copilot = (query: string) =>
+  api.post<CopilotResult>("/ai/copilot", { query }).then((r) => r.data);
+
+// ---- Credit health coach ----
+export interface CreditCard { name: string; limit: number; balance: number; apr: number; min_due?: number | null; due_day?: number | null }
+export interface CreditLoan { name: string; emi: number; outstanding: number }
+export interface CreditRequest {
+  score: number | null;
+  monthly_income: number;
+  cards: CreditCard[];
+  loans: CreditLoan[];
+  missed_payments_12m: number;
+  has_settled_or_written_off: boolean;
+  oldest_account_years: number;
+  enquiries_6m: number;
+  monthly_card_budget: number;
+}
+export interface PayoffRun {
+  strategy: string; months: number; total_interest: number; cleared: boolean;
+  months_to_30pct: number | null; months_to_10pct: number | null;
+}
+export interface CreditResult {
+  score: number | null;
+  band: { name: string; next_band: string | null; points_to_next_band: number } | null;
+  utilization_pct: number | null;
+  dti_pct: number | null;
+  monthly_obligations: number;
+  factors: { key: string; label: string; impact: string; status: "good" | "warn" | "bad"; value: string; why: string }[];
+  factor_counts: { good: number; warn: number; bad: number };
+  cards: { name: string; utilization_pct: number; pay_to_30pct: number; pay_to_10pct: number; limit_needed_for_30pct: number }[];
+  actions: { when: string; title: string; detail: string; priority: number }[];
+  payoff: null | {
+    monthly_budget: number; avalanche: PayoffRun; snowball: PayoffRun; minimum_only: PayoffRun;
+    interest_saved_vs_minimum: number; assumptions: string[];
+  };
+  disclaimer: string;
+}
+export const analyzeCredit = (body: CreditRequest) =>
+  api.post<CreditResult>("/credit/analyze", body).then((r) => r.data);
+
+export interface WhatIfResult {
+  extra_payment: number; applied: number; unused: number;
+  allocation: { card: string; paid: number }[];
+  utilization_before_pct: number | null; utilization_after_pct: number | null;
+  under_30_after: boolean; under_10_after: boolean;
+  months_before: number; months_after: number;
+  interest_before: number; interest_after: number; interest_saved: number;
+  note: string;
+}
+export const creditWhatIf = (request: CreditRequest, extra_payment: number) =>
+  api.post<WhatIfResult>("/credit/what-if", { request, extra_payment }).then((r) => r.data);
+
+export interface CreditSnapshotPoint {
+  id: number; created_at: string | null; score: number | null;
+  utilization_pct: number | null; dti_pct: number | null;
+  total_balance: number; total_limit: number;
+}
+export const saveCreditSnapshot = (body: CreditRequest) =>
+  api.post<CreditSnapshotPoint>("/credit/snapshots", body).then((r) => r.data);
+export const listCreditSnapshots = () =>
+  api.get<CreditSnapshotPoint[]>("/credit/snapshots").then((r) => r.data);
+export const latestCreditSnapshot = () =>
+  api.get<(CreditSnapshotPoint & { inputs: CreditRequest }) | null>("/credit/snapshots/latest").then((r) => r.data);
+export const deleteCreditSnapshot = (id: number) => api.delete(`/credit/snapshots/${id}`);
+
+export interface Prefs { email_alerts: boolean; email_configured: boolean }
+export const getPrefs = () => api.get<Prefs>("/me/preferences").then((r) => r.data);
+export const setPrefs = (email_alerts: boolean) =>
+  api.put<Prefs>("/me/preferences", { email_alerts }).then((r) => r.data);

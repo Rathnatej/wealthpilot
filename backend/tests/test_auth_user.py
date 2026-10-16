@@ -83,9 +83,10 @@ def test_google_rejects_unverified_invalid_and_unconfigured(client, monkeypatch)
     assert client.post("/auth/google", json={"credential": "z" * 20}).status_code == 503
 
 
-def test_ai_with_login_but_no_key_is_503(client):
-    r = client.post("/ai/intent", json={"query": "hi"}, headers=_auth_headers(client))
-    assert r.status_code == 503
+def test_copilot_works_without_ai_key_via_rules(client):
+    r = client.post("/ai/copilot", json={"query": "What if I raise my SIP by 5000?"},
+                    headers=_auth_headers(client))
+    assert r.status_code == 200 and r.json()["parsed_by"] == "rules"
 
 
 # ---------------- saved twin ----------------

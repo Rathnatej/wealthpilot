@@ -8,13 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 load_dotenv()
 
-import ai_service, auth, engine, user_routes  # noqa: E402
+import ai_service, auth, credit, engine, features, user_routes  # noqa: E402
 from database import get_session, init_db  # noqa: E402
 from models import AuditLog, User  # noqa: E402
 from parsers.cas_parser import parse_cas  # noqa: E402
 from parsers.bank_statement import parse_statement  # noqa: E402
 from schemas import (  # noqa: E402
-    ExplainRequest, ExplainResult, GoalInput, GoalResult, IntentResponse,
+    ExplainRequest, ExplainResult, GoalInput, GoalResult,
     SimulationRequest, SimulationResponse, XirrRequest,
 )
 
@@ -33,6 +33,8 @@ app.add_middleware(
 )
 app.include_router(auth.router)
 app.include_router(user_routes.router)
+app.include_router(features.router)
+app.include_router(credit.router)
 
 
 @app.get("/health")
@@ -64,19 +66,6 @@ async def xirr(req: XirrRequest):
 
 
 # AI endpoints require login so the Gemini quota can't be abused anonymously.
-@app.post("/ai/intent", response_model=IntentResponse)
-async def intent(req: ExplainRequest, user: User = Depends(auth.get_current_user),
-                 db: AsyncSession = Depends(get_session)):
-    try:
-        result = ai_service.parse_intent(req.query)
-    except RuntimeError as e:
-        raise HTTPException(503, str(e))
-    db.add(AuditLog(kind="ai", payload={"user_id": user.id, "query": req.query,
-                                        "result": result.model_dump()}))
-    await db.commit()
-    return result
-
-
 @app.post("/ai/explain", response_model=ExplainResult)
 async def explain(req: ExplainRequest, user: User = Depends(auth.get_current_user)):
     try:
@@ -89,9 +78,11 @@ async def explain(req: ExplainRequest, user: User = Depends(auth.get_current_use
 async def cas(file: UploadFile = File(...), password: str | None = Form(None),
               user: User = Depends(auth.get_current_user)):
     try:
-        holdings = parse_cas(await file.read(), password)
-    except Exception as e:
-        raise HTTPException(400, f"Could not read PDF: {e}")
+        holdings = parse_cas(await features.read_upload(file), password)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "Could not read this PDF (wrong password or unsupported format)")
     return {"holdings": holdings, "review_required": [h for h in holdings if h["needs_review"]]}
 
 

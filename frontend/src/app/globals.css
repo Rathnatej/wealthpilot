@@ -2,5 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
-body { @apply bg-slate-950 text-slate-100 antialiased; }
+/* Design tokens from DESIGN.md. Values are space-separated RGB channels. */
+:root {
+  --primary: 0 82 255;          /* #0052ff */
+  --primary-active: 0 62 204;   /* #003ecc */
+  --primary-disabled: 168 184 204;
+  --ink: 10 11 13;              /* #0a0b0d */
+  --body: 91 97 110;            /* #5b616e */
+  --muted: 124 130 138;         /* #7c828a */
+  --canvas: 255 255 255;
+  --surface-soft: 247 247 247;
+  --surface-strong: 238 240 243;
+  --surface-card: 255 255 255;
+  --hairline: 222 225 230;
+  color-scheme: light;
+}
+
+.dark {
+  --primary: 87 139 255;        /* lifted blue for contrast on near-black */
+  --primary-active: 126 164 255;
+  --primary-disabled: 60 70 90;
+  --ink: 255 255 255;
+  --body: 168 172 179;
+  --muted: 124 130 138;
+  --canvas: 10 11 13;
+  --surface-soft: 22 24 28;
+  --surface-strong: 31 34 40;
+  --surface-card: 22 24 28;
+  --hairline: 42 45 52;
+  color-scheme: dark;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-canvas font-sans text-body antialiased; }
+  h1, h2, h3 { @apply text-ink; }
+  /* Display type stays at weight 400 with negative tracking (DESIGN.md). */
+  .display { @apply font-normal text-ink; letter-spacing: -0.025em; line-height: 1.04; }
+  :focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }
+}
+
+@layer components {
+  /* Buttons: every CTA is a pill, 44px tall. */
+  .btn { @apply inline-flex h-11 items-center justify-center gap-2 rounded-pill px-5 text-base font-semibold transition-colors disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-primary text-white hover:bg-primary-active disabled:bg-primary-disabled; }
+  .dark .btn-primary { @apply text-dark; }
+  .btn-secondary { @apply btn bg-strong text-ink hover:bg-hairline disabled:opacity-50; }
+  .btn-outline { @apply btn border border-white/70 text-white hover:bg-white/10; }
+  .btn-text { @apply inline-flex items-center gap-1 font-semibold text-primary hover:underline; }
+  .btn-lg { @apply h-14 px-8; }
+  .btn-sm { @apply h-9 px-4 text-sm; }
+
+  /* Cards: 24px radius, hairline, flat. Shadow only on hover. */
+  .card { @apply rounded-xl border border-hairline bg-card p-6 sm:p-8; }
+  .card-hover { @apply transition-shadow hover:shadow-soft; }
+  .card-dark { @apply rounded-xl bg-dark-elevated p-6 text-white sm:p-8; }
+
+  /* Form controls. */
+  .input { @apply h-12 w-full rounded-md border border-hairline bg-canvas px-4 text-base text-ink placeholder:text-muted outline-none transition-colors focus:border-2 focus:border-primary focus:px-[15px]; }
+  .label { @apply mb-1.5 block text-sm font-medium text-ink; }
+  .badge { @apply inline-flex items-center rounded-pill bg-strong px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink; }
+
+  /* Every number renders in mono. */
+  .num { @apply font-mono font-medium tabular-nums; }
+  .up { @apply text-up; }
+  .down { @apply text-down; }
+
+  .section { @apply py-16 sm:py-24; }
+  .container-page { @apply mx-auto w-full max-w-page px-5 sm:px-8; }
+}
+
+/* PDF export / print */
+@media print {
+  nav, footer, .no-print { display: none !important; }
+  body { background: #fff !important; }
+}

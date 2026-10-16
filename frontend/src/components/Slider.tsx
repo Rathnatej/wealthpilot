@@ -6,11 +6,11 @@ export function Slider(props: {
   const { label, value, min, max, step, onChange, format } = props;
   return (
     <label className="block">
-      <div className="flex justify-between text-sm text-slate-300">
-        <span>{label}</span>
-        <span className="font-mono">{format ? format(value) : value}</span>
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="font-medium text-ink">{label}</span>
+        <span className="num text-ink">{format ? format(value) : value}</span>
       </div>
-      <input type="range" className="w-full accent-emerald-400" min={min} max={max}
+      <input type="range" className="mt-2 h-2 w-full cursor-pointer accent-primary" min={min} max={max}
         step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
     </label>
   );

@@ -16,3 +16,16 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      # Optional: email alerts and payment reminders
+      - key: CRON_SECRET
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
