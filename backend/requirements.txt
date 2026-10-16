@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic>=2
+sqlalchemy[asyncio]>=2
+aiosqlite
+asyncpg
+python-dotenv
+scipy
+google-genai
+pdfplumber
+python-multipart
