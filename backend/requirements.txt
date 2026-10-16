@@ -9,3 +9,8 @@ scipy
 google-genai
 pdfplumber
 python-multipart
+PyJWT
+bcrypt
+email-validator
+google-auth
+requests

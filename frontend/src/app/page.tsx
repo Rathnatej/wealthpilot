@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Slider } from "@/components/Slider";
 import { WealthChart, inr } from "@/components/WealthChart";
-import { explain, parseIntent, simulate, Scenario, SimResponse, Twin } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
+import { errMsg, explain, latestTwin, parseIntent, simulate, Scenario, SimResponse, Twin } from "@/services/api";
 
 const blank = (name: string): Scenario => ({
   name, sip_delta: 0, new_loan_emi: 0, new_loan_months: 0, lump_sum: 0, return_delta: 0,
 });
 
 export default function Home() {
+  const { user } = useAuth();
   const [twin, setTwin] = useState<Twin>({
     current_corpus: 500000, monthly_sip: 20000, annual_return: 0.12,
     monthly_emi: 0, emi_months: 0, years: 10,
@@ -22,12 +25,13 @@ export default function Home() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [aiMsg, setAiMsg] = useState("");
+  const [twinMsg, setTwinMsg] = useState("");
 
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true); setError("");
       try { setData(await simulate(twin, scenarios)); }
-      catch { setError("Cannot reach the API. Is the backend running?"); }
+      catch (e) { setError(errMsg(e)); }
       finally { setLoading(false); }
     }, 300);
     return () => clearTimeout(t);
@@ -36,7 +40,26 @@ export default function Home() {
   const setS = (i: number, patch: Partial<Scenario>) =>
     setScenarios((s) => s.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
+  async function loadMyTwin() {
+    setTwinMsg("");
+    try {
+      const t = await latestTwin();
+      if (!t) return setTwinMsg("You haven't saved a twin yet. Add one on the My Twin page.");
+      // Investable assets exclude real estate.
+      const investable = t.assets.filter((a) => a.kind !== "real_estate").reduce((s, a) => s + a.value, 0);
+      setTwin((p) => ({
+        ...p,
+        current_corpus: Math.min(investable, 20000000),
+        monthly_sip: Math.min(t.monthly_sip, 200000),
+        annual_return: Math.min(Math.max(t.annual_return, 0.02), 0.2),
+      }));
+      setTwinMsg(`Loaded your twin (v${t.version_id}).`);
+    } catch (e) { setTwinMsg(errMsg(e)); }
+  }
+
   async function ask() {
+    if (!user) return setAiMsg("Log in to use the AI assistant.");
+    if (!query.trim()) return;
     setAiMsg("Thinking…");
     try {
       const r = await parseIntent(query);
@@ -44,14 +67,28 @@ export default function Home() {
       setScenarios((s) => [{ ...r.scenario!, name: "AI Scenario" }, ...s.slice(1)]);
       setAiMsg("Scenario A replaced with your AI-parsed scenario.");
       if (data) setAiMsg(await explain(`Query: ${query}\nBaseline final: ${data.baseline.final_corpus}`));
-    } catch { setAiMsg("AI service unavailable (check GEMINI_API_KEY)."); }
+    } catch (e) {
+      setAiMsg(errMsg(e, "AI service unavailable (check GEMINI_API_KEY)."));
+    }
   }
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-6">
-      <header>
-        <h1 className="text-3xl font-bold">WealthPilot</h1>
-        <p className="text-sm text-slate-400">Financial twin &amp; scenario simulator. Educational only — not investment advice.</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Scenario simulator</h1>
+          <p className="text-sm text-slate-400">Educational only — not investment advice.</p>
+        </div>
+        {user ? (
+          <div className="flex items-center gap-3 text-sm">
+            {twinMsg && <span className="text-slate-400">{twinMsg}</span>}
+            <button onClick={loadMyTwin} className="rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700">Load my saved twin</button>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400">
+            <Link href="/signup" className="text-emerald-400 hover:underline">Create an account</Link> to save your twin and goals.
+          </p>
+        )}
       </header>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -96,10 +133,12 @@ export default function Home() {
       <section className="space-y-2 rounded-xl bg-slate-900 p-4">
         <h2 className="font-semibold">Ask a what-if question</h2>
         <div className="flex gap-2">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="How does a ₹10L loan over 5 years affect my goals?"
+          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()}
+            placeholder="How does a ₹10L loan over 5 years affect my goals?"
             className="flex-1 rounded-lg bg-slate-800 px-3 py-2 outline-none" />
           <button onClick={ask} className="rounded-lg bg-emerald-500 px-4 py-2 font-medium text-slate-950">Ask</button>
         </div>
+        {!user && <p className="text-xs text-slate-500">Log in to use the AI assistant.</p>}
         {aiMsg && <p className="whitespace-pre-wrap text-sm text-slate-300">{aiMsg}</p>}
       </section>
     </main>

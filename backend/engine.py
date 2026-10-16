@@ -62,3 +62,27 @@ def xirr(dates: list[date], cashflows: list[float]) -> float:
     # fallback bracketed solver
     from scipy.optimize import brentq
     return brentq(f, -0.99, 10)
+
+
+def goal_status(target_amount: float, inflation: float, current_saved: float,
+                monthly: float, annual_return: float, target_date: date,
+                today: date | None = None) -> dict:
+    """Inflation-adjust a goal and project savings toward it (same recurrence as project())."""
+    today = today or date.today()
+    years = max((target_date - today).days, 0) / 365.25
+    months = round(years * 12)
+    inflated = future_value(target_amount, inflation, years)
+    r = annual_return / 12
+    g = (1 + r) ** months
+    annuity = (1 + r) * (g - 1) / r if abs(r) > 1e-12 else float(months)
+    projected = current_saved * g + monthly * annuity
+    required = max((inflated - current_saved * g) / annuity, 0.0) if annuity > 0 else 0.0
+    return {
+        "years_left": round(years, 2),
+        "inflated_target": inflated,
+        "projected_value": round(projected, 2),
+        "progress_pct": round(projected / inflated * 100, 1) if inflated > 0 else 0.0,
+        "on_track": projected >= inflated,
+        "required_monthly_contribution": round(required, 2),
+        "shortfall": round(max(inflated - projected, 0.0), 2),
+    }

@@ -36,6 +36,22 @@ async def get_session():
         yield session
 
 
+def _add_missing_columns(sync_conn):
+    """Tiny migration step: add columns that models gained after a table was first created."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(sync_conn)
+    quote = sync_conn.dialect.identifier_preparer.quote
+    for table in Base.metadata.sorted_tables:
+        existing = {c["name"] for c in insp.get_columns(table.name)}
+        for col in table.columns:
+            if col.name not in existing:
+                ddl = col.type.compile(dialect=sync_conn.dialect)
+                sync_conn.execute(text(
+                    f"ALTER TABLE {quote(table.name)} ADD COLUMN {quote(col.name)} {ddl}"))
+
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
