@@ -225,3 +225,116 @@ export interface Prefs { email_alerts: boolean; email_configured: boolean }
 export const getPrefs = () => api.get<Prefs>("/me/preferences").then((r) => r.data);
 export const setPrefs = (email_alerts: boolean) =>
   api.put<Prefs>("/me/preferences", { email_alerts }).then((r) => r.data);
+
+// ---- Dashboard ----
+export interface HealthComponent { key: string; label: string; points: number; max: number; value: number | string | null; note: string }
+export interface Health {
+  score: number; band: string; components: HealthComponent[];
+  metrics: { emergency_months: number | null; dti_pct: number | null; savings_rate_pct: number | null; monthly_surplus: number };
+}
+export interface Alert { id: string; severity: "info" | "warning"; title: string; detail: string }
+export interface Dashboard {
+  has_twin: boolean; health: Health | null; alerts: Alert[];
+  goals_total: number; net_worth: number | null; version_id: number | null;
+}
+export const getDashboard = () => api.get<Dashboard>("/dashboard").then((r) => r.data);
+
+// ---- Planners ----
+export interface Explained<T> { result: T; explanation: string; source: "ai" | "template" }
+
+export interface StepUpInput { current_corpus: number; monthly_sip: number; step_up_pct: number; annual_return_pct: number; years: number }
+export interface StepUpResult {
+  series: { year: number; flat: number; step_up: number; invested_flat: number; invested_step_up: number }[];
+  final_flat: number; final_step_up: number; invested_flat: number; invested_step_up: number;
+  extra_wealth: number; final_year_sip: number;
+}
+export const planStepUp = (b: StepUpInput) =>
+  api.post<Explained<StepUpResult>>("/planners/stepup", b).then((r) => r.data);
+
+export interface RetirementInput {
+  current_age: number; retirement_age: number; life_expectancy: number; monthly_expenses: number;
+  inflation_pct: number; pre_return_pct: number; post_return_pct: number;
+  current_corpus: number; monthly_sip: number; step_up_pct: number;
+}
+export interface RetirementResult {
+  years_to_retirement: number; retirement_years: number; expenses_at_retirement_monthly: number;
+  corpus_needed: number; projected_corpus: number; gap: number; on_track: boolean;
+  required_monthly_sip: number; depletion_age: number | null; fire_number_today: number;
+  series: { age: number; corpus: number; phase: "saving" | "retired" }[];
+}
+export const planRetirement = (b: RetirementInput) =>
+  api.post<Explained<RetirementResult>>("/planners/retirement", b).then((r) => r.data);
+
+export interface LoanInput {
+  principal: number; annual_rate_pct: number; remaining_months: number; emi: number | null;
+  lump_sum: number; extra_monthly: number; invest_return_pct: number;
+}
+export interface LoanRun { final_net_worth: number; interest_paid: number; loan_closed_month: number | null; investments: number; loan_balance: number }
+export interface LoanResult {
+  emi: number; prepay: LoanRun; invest: LoanRun; winner: "prepay" | "invest";
+  difference: number; interest_saved: number; breakeven_return: number | null;
+}
+export const planLoan = (b: LoanInput) =>
+  api.post<Explained<LoanResult>>("/planners/loan-vs-invest", b).then((r) => r.data);
+
+// ---- Goal risk (Monte Carlo) ----
+export interface GoalRisk {
+  goal_id: number; name: string; probability_pct: number; inflated_target: number;
+  p10: number; p50: number; p90: number; paths: number; volatility: number;
+  fan: { month: number; p10: number; p50: number; p90: number }[];
+  explanation: string; source: "ai" | "template";
+}
+export const goalRisk = (id: number, volatility: number) =>
+  api.get<GoalRisk>(`/goals/${id}/risk`, { params: { volatility } }).then((r) => r.data);
+
+// ---- Explain a scenario ----
+export const explainScenario = (twin: Twin, scenarios: Scenario[]) =>
+  api.post<{ explanation: string; source: "ai" | "template" }>("/explain/scenario", { twin, scenarios }).then((r) => r.data);
+
+// ---- Tutor ----
+export type TutorTerm = "xirr" | "sip_step_up" | "expense_ratio" | "inflation" | "emergency_fund" | "compounding";
+export const tutor = (term: TutorTerm) =>
+  api.post<{ term: TutorTerm; definition: string; explanation: string; source: "ai" | "template" }>("/ai/tutor", { term }).then((r) => r.data);
+
+// ---- Statement import + spending insights ----
+export interface Txn { date: string; description: string; amount: number; type: "debit" | "credit"; category: string }
+export const parseBankFile = (file: File, password?: string) => {
+  const f = new FormData();
+  f.append("file", file);
+  if (password) f.append("password", password);
+  return api.post<{ transactions: Txn[]; count: number }>("/parse/bank-file", f).then((r) => r.data);
+};
+export interface InsightFacts {
+  months: string[]; latest_month?: string; previous_month?: string | null;
+  spend_by_month?: Record<string, number>; income_latest_month?: number;
+  top_categories?: { category: string; total: number; share_pct: number }[];
+  changes?: { category: string; previous: number; latest: number; change: number; change_pct: number | null }[];
+  savings_rate_latest_pct?: number | null; skipped_rows: number;
+}
+export const spendingInsights = (transactions: Txn[]) =>
+  api.post<{ facts: InsightFacts; explanation: string; source: "ai" | "template" }>("/ai/insights", { transactions }).then((r) => r.data);
+
+// ---- CAS import (review before saving) ----
+export interface CasHolding {
+  isin: string; folio: string | null; units: number | null; cost: number | null; nav: number | null;
+  confidence: number; needs_review: boolean;
+}
+export const parseCas = (file: File, password?: string) => {
+  const f = new FormData();
+  f.append("file", file);
+  if (password) f.append("password", password);
+  return api.post<{ holdings: CasHolding[] }>("/parse/cas", f).then((r) => r.data.holdings);
+};
+export interface HoldingIn { isin: string; folio?: string | null; name?: string | null; units?: number | null; nav?: number | null; cost?: number | null }
+export const importHoldings = (holdings: HoldingIn[]) =>
+  api.post<{ version_id: number; net_worth: number; imported: number }>("/twin/import-holdings", { holdings }).then((r) => r.data);
+
+// ---- Share ----
+export interface SharedScenario {
+  title: string; twin: Twin; scenarios: Scenario[]; explanation: string; created_at: string;
+  baseline: { name: string; final_corpus: number; series: { month: number; corpus: number }[] };
+  results: { name: string; final_corpus: number; series: { month: number; corpus: number }[] }[];
+}
+export const createShare = (title: string, twin: Twin, scenarios: Scenario[]) =>
+  api.post<{ token: string; path: string }>("/share", { title, twin, scenarios }).then((r) => r.data);
+export const getShare = (token: string) => api.get<SharedScenario>(`/share/${token}`).then((r) => r.data);

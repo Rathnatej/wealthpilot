@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { NumInput } from "@/components/NumInput";
+import { GoalRisk } from "@/components/GoalRisk";
 import { RequireAuth } from "@/components/RequireAuth";
 import { inr } from "@/components/WealthChart";
 import { Goal, GoalInput, createGoal, deleteGoal, errMsg, listGoals } from "@/services/api";
@@ -146,6 +147,7 @@ function GoalsManager() {
                 {!g.on_track && (
                   <p className="text-sm text-body">Projected shortfall: <span className="num down">{inr(g.shortfall)}</span> at the assumed return.</p>
                 )}
+                <GoalRisk goalId={g.id} />
                 <button onClick={() => remove(g)} className="text-sm font-medium text-muted hover:text-down">Delete</button>
               </article>
             );

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Slider } from "@/components/Slider";
 import { WealthChart, inr } from "@/components/WealthChart";
 import { useAuth } from "@/context/AuthContext";
-import { copilot, errMsg, latestTwin, simulate, Scenario, SimResponse, Twin } from "@/services/api";
+import { copilot, createShare, errMsg, latestTwin, simulate, Scenario, SimResponse, Twin } from "@/services/api";
 
 const blank = (name: string): Scenario => ({
   name, sip_delta: 0, new_loan_emi: 0, new_loan_months: 0, lump_sum: 0, return_delta: 0,
@@ -21,6 +21,15 @@ export default function Home() {
     { ...blank("Scenario B"), new_loan_emi: 15000, new_loan_months: 60 },
   ]);
   const [data, setData] = useState<SimResponse | null>(null);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareErr, setShareErr] = useState("");
+  async function share() {
+    setShareErr(""); setShareUrl("");
+    try {
+      const r = await createShare("My wealth scenario", twin, scenarios);
+      setShareUrl(`${window.location.origin}/s/${r.token}`);
+    } catch (e) { setShareErr(errMsg(e)); }
+  }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -158,8 +167,18 @@ export default function Home() {
         <section className="card mt-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Wealth trajectory</h3>
-            {loading && <span className="text-xs text-muted">Updating…</span>}
+            <div className="flex items-center gap-3">
+              {loading && <span className="text-xs text-muted">Updating…</span>}
+              {user ? <button onClick={share} className="btn-outline btn-sm">Share</button> : <Link href="/login" className="text-xs text-muted">Log in to share</Link>}
+            </div>
           </div>
+          {shareUrl && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-soft p-3 text-sm">
+              <input readOnly value={shareUrl} onFocus={(e) => e.target.select()} className="num min-w-0 flex-1 bg-transparent text-ink outline-none" aria-label="Share link" />
+              <button onClick={() => navigator.clipboard?.writeText(shareUrl)} className="btn-secondary btn-sm">Copy</button>
+            </div>
+          )}
+          {shareErr && <p role="alert" className="mb-3 text-sm text-down">{shareErr}</p>}
           {error && <p role="alert" className="text-down">{error}</p>}
           {data && <WealthChart data={data} />}
           {data && (

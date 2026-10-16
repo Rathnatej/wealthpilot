@@ -7,9 +7,15 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/", label: "Simulator" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/twin", label: "My Twin" },
   { href: "/goals", label: "Goals" },
-  { href: "/credit", label: "Credit coach" },
+  { href: "/planners", label: "Planners" },
+  { href: "/chat", label: "Copilot" },
+  { href: "/credit", label: "Credit" },
+  { href: "/insights", label: "Insights" },
+  { href: "/import", label: "Import" },
+  { href: "/tutor", label: "Learn" },
 ];
 
 export function Navbar() {
@@ -22,10 +28,10 @@ export function Navbar() {
       <div className="container-page flex h-16 items-center gap-6">
         <Link href="/" className="text-xl font-semibold tracking-tight text-primary">WealthPilot</Link>
 
-        <div className="hidden gap-1 md:flex">
+        <div className="hidden gap-0.5 xl:flex">
           {links.map((l) => (
             <Link key={l.href} href={l.href}
-              className={`rounded-pill px-4 py-2 text-sm font-medium ${path === l.href ? "bg-strong text-ink" : "text-body hover:text-ink"}`}>
+              className={`rounded-pill px-3 py-2 text-sm font-medium ${path === l.href ? "bg-strong text-ink" : "text-body hover:text-ink"}`}>
               {l.label}
             </Link>
           ))}
@@ -42,14 +48,14 @@ export function Navbar() {
             </>
           )}
           <button onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-strong text-ink md:hidden">
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-strong text-ink xl:hidden">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d={open ? "M6 6l12 12M18 6L6 18" : "M4 7h16M4 12h16M4 17h16"} /></svg>
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="border-t border-hairline bg-canvas md:hidden">
+        <div className="border-t border-hairline bg-canvas xl:hidden">
           <div className="container-page flex flex-col py-3">
             {links.map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
