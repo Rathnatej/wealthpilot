@@ -52,6 +52,7 @@ export class VoiceEngine {
   private closing = false;
   private ended = false;
   private connected = false;
+  private gotMessage = false;
   private muted = false;
   private state: VoiceState = "connecting";
   private turns: Turn[] = [];
@@ -88,6 +89,8 @@ export class VoiceEngine {
   private async connect(): Promise<void> {
     const { GoogleGenAI, Modality, EndSensitivity } = await import("@google/genai");
     const ai = new GoogleGenAI({ apiKey: this.cfg.token });
+    const openedAt = Date.now();
+    this.gotMessage = false;
     const config: LiveConnectConfig = {
       responseModalities: [Modality.AUDIO],
       systemInstruction: this.cfg.system_instruction,
@@ -109,9 +112,16 @@ export class VoiceEngine {
       config,
       callbacks: {
         onopen: () => undefined,
-        onmessage: (m: LiveServerMessage) => { void this.onMessage(m); },
-        onerror: () => undefined, // onclose follows; we handle recovery there
-        onclose: () => { this.connected = false; if (!this.closing) void this.reconnect(); },
+        onmessage: (m: LiveServerMessage) => { this.gotMessage = true; void this.onMessage(m); },
+        onerror: (e: unknown) => { console.warn("[voice] socket error", e); },
+        onclose: (e: CloseEvent) => {
+          console.warn("[voice] closed", e?.code, e?.reason);
+          this.connected = false;
+          if (this.closing) return;
+          // Closed before Google ever answered = a setup problem, not a network blip. Don't loop.
+          if (!this.gotMessage && Date.now() - openedAt < 6000) this.end("error", `closed_${e?.code ?? "x"}`);
+          else void this.reconnect();
+        },
       },
     });
     this.connected = true;

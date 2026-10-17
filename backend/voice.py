@@ -80,10 +80,9 @@ def _mint_token(model: str, max_seconds: int) -> str:
         "uses": 1,  # one session; reconnects use session resumption with the same token
         "expire_time": now + dt.timedelta(seconds=max_seconds + 120),
         "new_session_expire_time": now + dt.timedelta(minutes=1),
-        "live_connect_constraints": {
-            "model": model,
-            "config": {"session_resumption": {}, "response_modalities": ["AUDIO"]},
-        },
+        # Lock the token to the model only. Locking the whole config made Google close sockets
+        # whose setup (prompt, tools, voice) differed from the locked fields.
+        "live_connect_constraints": {"model": model},
     })
     return token.name
 
