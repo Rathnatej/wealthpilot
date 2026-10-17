@@ -10,6 +10,10 @@ REFUSAL = ("I can only explain concepts and run what-if scenarios. I can't recom
 HINT = ("I couldn't find a scenario in that. Try: \"What if I take a ₹10L loan for 5 years?\" "
         "or \"What if I raise my SIP by ₹10,000?\"")
 DEFAULT_RATE = 9.5
+GREET_RE = re.compile(r"^\s*(hi+|hello+|hey+|hola|namaste|namaskar|yo|sup|good (morning|evening|afternoon)|thanks?|thank you)\b",
+                      re.I)
+GREETING = ("Hi! I run what-if scenarios on your numbers. Try: \"What if I take a ₹10L loan for 5 years?\", "
+            "\"What if I raise my SIP by ₹5,000?\" or \"What if I invest ₹2 lakh today?\"")
 DEFAULT_MONTHS = 60
 
 # Deterministic guardrail: runs before any AI call.

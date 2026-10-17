@@ -89,6 +89,8 @@ async def copilot(req: CopilotRequest, user: User = Depends(get_current_user),
     if intent.ADVICE_RE.search(q):  # deterministic guardrail before any model is involved
         await audit(db, {"user_id": user.id, "kind": "copilot", "query": q, "refused": True})
         return CopilotResponse(refused=True, message=intent.REFUSAL)
+    if intent.GREET_RE.match(q) and not any(ch.isdigit() for ch in q):
+        return CopilotResponse(message=intent.GREETING, parsed_by="rules")
     parsed, parsed_by = await _parse_intent(q)
     if parsed.refused:
         await audit(db, {"user_id": user.id, "kind": "copilot", "query": q, "refused": True})

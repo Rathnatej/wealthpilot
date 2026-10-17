@@ -5,7 +5,7 @@ from google.genai import types
 
 from feature_schemas import LLMIntent
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 INTENT_SYSTEM = """You extract what-if parameters for WealthPilot (SEBI Level 1-2: education and scenario analysis only).
 - Fill `params` ONLY with values the user explicitly stated. Amounts are in INR (1 lakh = 100000, 1 crore = 10000000).
@@ -21,11 +21,20 @@ def configured() -> bool:
     return bool(os.getenv("GEMINI_API_KEY"))
 
 
+_CLIENT: "genai.Client | None" = None
+_CLIENT_KEY: str | None = None
+
+
 def _client():
+    """One shared client. A throwaway client per call gets garbage-collected (closing its HTTP
+    session) while a request is still running, which raised 'client has been closed'."""
+    global _CLIENT, _CLIENT_KEY
     key = os.getenv("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY not set")
-    return genai.Client(api_key=key)
+    if _CLIENT is None or key != _CLIENT_KEY:
+        _CLIENT, _CLIENT_KEY = genai.Client(api_key=key), key
+    return _CLIENT
 
 
 def parse_intent_llm(query: str) -> LLMIntent:
